@@ -36,7 +36,7 @@ Local AI assistant infrastructure: llama.cpp inference server with MTP speculati
 cp .env.example .env
 
 # 2. Generate a gateway token
-openssl rand -hex 32 > .env
+echo "OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)" > .env
 # Or set manually: OPENCLAW_GATEWAY_TOKEN=<your-secret>
 
 # 3. Pull images and start
