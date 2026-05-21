@@ -84,7 +84,9 @@ curl http://localhost:18789/                  # Should return gateway UI
 
 ### Environment Variables
 
-See `.env.example`. The only required variable is `OPENCLAW_GATEWAY_TOKEN`.
+See `.env.example`. Required variables:
+- `OPENCLAW_GATEWAY_TOKEN` — Gateway authentication token
+- `DISCORD_BOT_TOKEN` — Discord bot token (optional, for Discord integration)
 
 ### Docker Compose — Inference Server
 
@@ -100,31 +102,23 @@ See `.env.example`. The only required variable is `OPENCLAW_GATEWAY_TOKEN`.
 - No `depends_on` — starts immediately, handles connection retry
 - External network: `command-center-net`
 
-### OpenClaw Gateway Config ⚠️
+### OpenClaw Gateway Config
 
-**This configuration is stored in a Docker volume, NOT in the repository.**
+**Configuration is stored in a Docker volume** (`openclaw-data`), with **secrets injected via environment variables**.
 
-When deploying fresh, restore the gateway config from `openclaw-config/openclaw.json.example`:
+When deploying fresh:
 
 ```bash
 # Deploy via helper script (recommended)
 bash scripts/deploy-config.sh
-
-# Or manually:
-docker cp openclaw-config/openclaw.json.example openclaw:/home/node/.openclaw/openclaw.json
-docker compose restart openclaw
 ```
-
-**Why is this outside the repo?**
-- Contains sensitive auth token matching `.env`
-- Must be installed into Docker volume `openclaw-data` at `/home/node/.openclaw/openclaw.json`
-- Survives container rebuilds (persistent volume)
-- Never committed to git
 
 **Key config fields:**
 - `gateway.auth.token` — must match `OPENCLAW_GATEWAY_TOKEN` in `.env`
 - `gateway.bind` — set to `lan` for LAN access
-- Device pairing — enabled by default
+- `channels.discord.accounts.default.token` — uses env var reference `{source: "env", id: "DISCORD_BOT_TOKEN"}`
+
+**Security model**: Tokens are injected at runtime via Docker environment variables and read by OpenClaw's env var resolver. No secrets are persisted in config files or volumes.
 
 ### Model Weights
 
@@ -167,6 +161,12 @@ Apply the frontend patch: `bash openclaw-patches/fix-duplicates.sh && docker com
 
 ### Gateway not starting
 Check that `gateway.auth.token` in `openclaw.json` matches `OPENCLAW_GATEWAY_TOKEN` in `.env`. The token must also be set via environment variable for the container to read it at startup.
+
+### Discord bot not responding
+1. Ensure `DISCORD_BOT_TOKEN` is set in `.env` (not empty)
+2. Restart: `docker compose restart openclaw`
+3. Check logs: `docker logs openclaw | grep discord`
+4. Verify the bot uses Discord's `@` mention dropdown (plain `@Name` text is not recognized)
 
 ### Connection refused on port 8081
 Ensure the model file path in `docker-compose.llama.yaml` matches the actual file in `models/`. Check `docker logs llama_backend` for model loading errors.
