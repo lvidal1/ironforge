@@ -19,7 +19,7 @@ Local AI assistant infrastructure: llama.cpp inference server with MTP speculati
 
 ### Services
 - **llama-backend** — Inference server using llama.cpp with MTP (Multi-Token Prediction) speculative decoding. Exposes OpenAI-compatible API at `/v1`.
-- **openclaw** — Gateway providing a web UI and agent framework. Routes to llama-backend via internal Docker network.
+- **openclaw** — Gateway providing a web UI and agent framework. Routes to llama-backend via Docker network.
 
 ## Prerequisites
 
@@ -43,7 +43,10 @@ openssl rand -hex 32 > .env
 # 3. Pull images and start
 docker compose up -d
 
-# 4. Verify
+# 4. Deploy OpenClaw gateway config (one-time, see below)
+bash scripts/deploy-config.sh
+
+# 5. Verify
 curl http://localhost:8081/v1/models        # Should return model info
 curl http://localhost:18789/                  # Should return gateway UI
 ```
@@ -64,33 +67,31 @@ See `.env.example`. The only required variable is `OPENCLAW_GATEWAY_TOKEN`.
 
 **This configuration is stored in a Docker volume, NOT in the repository.**
 
-When deploying fresh, you must restore the gateway config from `openclaw-config/openclaw.json.example`:
+When deploying fresh, restore the gateway config from `openclaw-config/openclaw.json.example`:
 
 ```bash
-# After starting containers, write the config into the Docker volume
+# Deploy via helper script (recommended)
+bash scripts/deploy-config.sh
+
+# Or manually:
 docker cp openclaw-config/openclaw.json.example openclaw:/home/node/.openclaw/openclaw.json
-
-# Or manually create it inside the container
-docker exec openclaw sh -c 'echo "CONFIG_JSON" > /home/node/.openclaw/openclaw.json'
-
-# Restart OpenClaw to pick up config
 docker compose restart openclaw
 ```
 
 **Why is this outside the repo?**
-- The config contains sensitive credentials (gateway auth token) that should not be committed
-- It must match the token in `.env`, which is also gitignored
-- Docker volumes persist across container rebuilds, so once written the config survives
-- The Docker volume is `openclaw-data`, mounted at `/home/node/.openclaw/` inside the container
+- Contains sensitive auth token matching `.env`
+- Must be installed into Docker volume `openclaw-data` at `/home/node/.openclaw/openclaw.json`
+- Survives container rebuilds (persistent volume)
+- Never committed to git
 
 **Key config fields:**
-- `models.providers.llama.baseUrl` — llama-backend API endpoint
 - `gateway.auth.token` — must match `OPENCLAW_GATEWAY_TOKEN` in `.env`
-- `gateway.controlUi.dangerouslyDisableDeviceAuth` — bypasses browser device pairing
+- `gateway.bind` — set to `lan` for LAN access
+- Device pairing — enabled by default
 
 ### Model Weights
 
-The GGUF model file (~27GB) is mounted read-only into the llama-backend container.
+The GGUF model file (~27GB) is mounted read-only into llama-backend.
 
 ## Frontend Patching
 
@@ -102,7 +103,7 @@ bash openclaw-patches/fix-duplicates.sh
 docker compose restart openclaw
 ```
 
-The patch modifies the minified JS bundle (`index-tfOsi8ru.js`) to unconditionally clear `chatStreamSegments` before history reload.
+The patch modifies the minified JS bundle to unconditionally clear `chatStreamSegments` before history reload.
 
 ## Troubleshooting
 
@@ -119,7 +120,7 @@ Check that `gateway.auth.token` in `openclaw.json` matches `OPENCLAW_GATEWAY_TOK
 Ensure the model file path in `docker-compose.yaml` matches the actual file in `models/`. Check `docker logs llama-backend` for model loading errors.
 
 ### MTP not active
-Verify `--spec-type draft-mtp` is present in the llama-backend command and the model supports MTP (Qwen3.6-35B-A3B does). Check logs for `draft acceptance rate` — if missing, MTP is not enabled.
+Verify `--spec-type draft-mtp` is present in the llama-backend command. Check logs for `draft acceptance rate` — if missing, MTP is not enabled.
 
 ## License
 

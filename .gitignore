@@ -17,5 +17,10 @@ state.json
 *.swo
 *~
 
+# Node artifacts (not a Node project)
+package.json
+package-lock.json
+node_modules/
+
 # OpenClaw patched bundle (not needed in git - generated at runtime)
 openclaw-patches/index-patched.js
