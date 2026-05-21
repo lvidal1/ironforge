@@ -90,7 +90,22 @@ docker compose restart openclaw
 
 ### Model Weights
 
-The GGUF model file (~27GB) is mounted read-only into llama-backend.
+The inference server expects a GGUF model file in the `models/` directory.
+
+We recommend [unsloth/Qwen3.6-35B-A3B-MTP-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF) — a Qwen3.6-35B-A3B variant trained with MTP (Multi-Token Prediction) for faster inference.
+
+To download:
+```bash
+# Install huggingface-cli
+pip install huggingface_hub
+
+# Download a quantized variant (e.g., Q5_K_XL ~27GB)
+huggingface-cli download unsloth/Qwen3.6-35B-A3B-MTP-GGUF \
+  Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf \
+  --local-dir models/
+```
+
+Any GGUF model works — just update the `-m` flag in `docker-compose.yaml` to match your file.
 
 ## Frontend Patching
 

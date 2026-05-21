@@ -25,6 +25,7 @@ services:
               capabilities: [gpu]
     command: >
       -m /models/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
+      # Replace with your GGUF model path if different
       --port 8081
       --host 0.0.0.0
       -c 110000
