@@ -52,7 +52,11 @@
     "discord": {
       "accounts": {
         "default": {
-          "token": "<replace-with-discord-bot-token>"
+          "token": {
+            "source": "env",
+            "provider": "default",
+            "id": "DISCORD_BOT_TOKEN"
+          }
         }
       }
     }
