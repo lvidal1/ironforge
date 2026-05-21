@@ -1,0 +1,127 @@
+# Command Center
+
+Local AI assistant infrastructure: llama.cpp inference server with MTP speculative decoding + OpenClaw gateway UI.
+
+## Architecture
+
+```
+┌─────────────────┐     ┌──────────────────────┐     ┌──────────────┐
+│   Browser        │     │  OpenClaw Gateway    │     │ llama.cpp    │
+│  localhost:18789 │────▶│  openclaw:18789      │────▶│ llama_backend│
+│  (Control UI)    │     │  (WebSocket/REST)    │     │ :8081        │
+└─────────────────┘     └──────────────────────┘     └──────────────┘
+                                                          │
+                                                    ┌───────────┐
+                                                    │ CUDA GPU  │
+                                                    │ RTX 5090  │
+                                                    └───────────┘
+```
+
+### Services
+- **llama-backend** — Inference server using llama.cpp with MTP (Multi-Token Prediction) speculative decoding. Exposes OpenAI-compatible API at `/v1`.
+- **openclaw** — Gateway providing a web UI and agent framework. Routes to llama-backend via internal Docker network.
+
+## Prerequisites
+
+- Docker + Docker Compose
+- NVIDIA GPU with CUDA support (tested: RTX 5090)
+- NVIDIA Container Toolkit
+- 30GB+ free disk space for model weights
+- Port 8081 available (llama-backend API)
+- Port 18789 available (OpenClaw UI)
+
+## Quick Start
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Generate a gateway token
+openssl rand -hex 32 > .env
+# Or set manually: OPENCLAW_GATEWAY_TOKEN=<your-secret>
+
+# 3. Pull images and start
+docker compose up -d
+
+# 4. Verify
+curl http://localhost:8081/v1/models        # Should return model info
+curl http://localhost:18789/                  # Should return gateway UI
+```
+
+## Configuration
+
+### Environment Variables
+
+See `.env.example`. The only required variable is `OPENCLAW_GATEWAY_TOKEN`.
+
+### Docker Compose
+
+`docker-compose.yaml` defines two services:
+- `llama-backend`: GPU inference with MTP enabled (`--spec-type draft-mtp`, `--spec-draft-n-max 2`)
+- `openclaw`: Gateway UI with token auth
+
+### OpenClaw Gateway Config ⚠️
+
+**This configuration is stored in a Docker volume, NOT in the repository.**
+
+When deploying fresh, you must restore the gateway config from `openclaw-config/openclaw.json.example`:
+
+```bash
+# After starting containers, write the config into the Docker volume
+docker cp openclaw-config/openclaw.json.example openclaw:/home/node/.openclaw/openclaw.json
+
+# Or manually create it inside the container
+docker exec openclaw sh -c 'echo "CONFIG_JSON" > /home/node/.openclaw/openclaw.json'
+
+# Restart OpenClaw to pick up config
+docker compose restart openclaw
+```
+
+**Why is this outside the repo?**
+- The config contains sensitive credentials (gateway auth token) that should not be committed
+- It must match the token in `.env`, which is also gitignored
+- Docker volumes persist across container rebuilds, so once written the config survives
+- The Docker volume is `openclaw-data`, mounted at `/home/node/.openclaw/` inside the container
+
+**Key config fields:**
+- `models.providers.llama.baseUrl` — llama-backend API endpoint
+- `gateway.auth.token` — must match `OPENCLAW_GATEWAY_TOKEN` in `.env`
+- `gateway.controlUi.dangerouslyDisableDeviceAuth` — bypasses browser device pairing
+
+### Model Weights
+
+The GGUF model file (~27GB) is mounted read-only into the llama-backend container.
+
+## Frontend Patching
+
+OpenClaw has a known bug causing duplicate messages in the Control UI. A patch is applied at runtime:
+
+```bash
+# Apply the patch to the running container
+bash openclaw-patches/fix-duplicates.sh
+docker compose restart openclaw
+```
+
+The patch modifies the minified JS bundle (`index-tfOsi8ru.js`) to unconditionally clear `chatStreamSegments` before history reload.
+
+## Troubleshooting
+
+### Health check failing
+Ensure `curl` is available inside the container image. The health check probes `http://localhost:8081/v1/models`.
+
+### Duplicate messages in UI
+Apply the frontend patch: `bash openclaw-patches/fix-duplicates.sh && docker compose restart openclaw`
+
+### Gateway not starting
+Check that `gateway.auth.token` in `openclaw.json` matches `OPENCLAW_GATEWAY_TOKEN` in `.env`. The token must also be set via environment variable for the container to read it at startup.
+
+### Connection refused on port 8081
+Ensure the model file path in `docker-compose.yaml` matches the actual file in `models/`. Check `docker logs llama-backend` for model loading errors.
+
+### MTP not active
+Verify `--spec-type draft-mtp` is present in the llama-backend command and the model supports MTP (Qwen3.6-35B-A3B does). Check logs for `draft acceptance rate` — if missing, MTP is not enabled.
+
+## License
+
+Model weights: Apache 2.0 (Qwen)
+Code: (add your license here)
