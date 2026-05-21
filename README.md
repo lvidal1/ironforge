@@ -13,7 +13,6 @@ Local AI assistant infrastructure: llama.cpp inference server with MTP speculati
                                                           │
                                                     ┌───────────┐
                                                     │ CUDA GPU  │
-                                                    │ RTX 5090  │
                                                     └───────────┘
 ```
 
@@ -24,7 +23,7 @@ Local AI assistant infrastructure: llama.cpp inference server with MTP speculati
 ## Prerequisites
 
 - Docker + Docker Compose
-- NVIDIA GPU with CUDA support (tested: RTX 5090)
+- NVIDIA GPU with CUDA support (tested: RTX 4090)
 - NVIDIA Container Toolkit
 - 30GB+ free disk space for model weights
 - Port 8081 available (llama-backend API)
