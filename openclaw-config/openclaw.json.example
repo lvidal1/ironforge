@@ -31,5 +31,47 @@
         "http://127.0.0.1:18789"
       ]
     }
+  },
+  "plugins": {
+    "entries": {
+      "duckduckgo": {
+        "enabled": true,
+        "config": {
+          "webSearch": {
+            "region": "es-es",
+            "safeSearch": "moderate"
+          }
+        }
+      },
+      "discord": {
+        "enabled": true
+      }
+    }
+  },
+  "channels": {
+    "discord": {
+      "accounts": {
+        "default": {
+          "token": "<replace-with-discord-bot-token>"
+        }
+      }
+    }
+  },
+  "tools": {
+    "web": {
+      "search": {
+        "provider": "duckduckgo"
+      }
+    }
+  },
+  "messages": {
+    "groupChat": {
+      "mentionPatterns": [
+        "@Ironforge",
+        "@ironforge",
+        "@Iron Forge",
+        "@iron forge"
+      ]
+    }
   }
 }
