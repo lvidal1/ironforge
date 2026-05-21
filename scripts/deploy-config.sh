@@ -1,6 +1,6 @@
 #!/bin/bash
 # Deploy OpenClaw gateway config into the Docker volume
-# Reads token from .env file and applies the config template
+# Reads tokens from .env file and applies the config template
 
 set -euo pipefail
 
@@ -8,11 +8,11 @@ cd "$(dirname "$0")/.."
 
 # Check .env exists
 if [ ! -f .env ]; then
-    echo "❌ .env not found. Copy .env.example to .env and set OPENCLAW_GATEWAY_TOKEN first."
+    echo "❌ .env not found. Copy .env.example to .env and set tokens first."
     exit 1
 fi
 
-# Read token from .env
+# Read tokens from .env
 source .env
 if [ -z "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
     echo "❌ OPENCLAW_GATEWAY_TOKEN not set in .env"
