@@ -1,0 +1,21 @@
+# Secrets & credentials
+.env
+
+# Large model files (26GB+)
+models/
+
+# Internal tool directories
+.pi/
+.vite/
+
+# Agent state
+state.json
+
+# OS / editor artifacts
+.DS_Store
+*.swp
+*.swo
+*~
+
+# OpenClaw patched bundle (not needed in git - generated at runtime)
+openclaw-patches/index-patched.js
