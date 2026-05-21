@@ -1,47 +1,13 @@
-services:
-  # Service 1: The Inference Server (Official MTP Engine Cluster)
-  llama-backend:
-    image: ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:8c79e4acf00e403e601278989e1d5144c6882ffc0ddf60bef01f90c213c225dd
-    container_name: llama_backend
-    environment:
-      - CUDA_VISIBLE_DEVICES=0
-    volumes:
-      # Mounts your local models folder as Read-Only for infrastructure safety
-      - ./models:/models:ro
-    ports:
-      - "8081:8081"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/v1/models"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    command: >
-      -m /models/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
-      --port 8081
-      --host 0.0.0.0
-      -c 110000
-      -t 12
-      -ngl 99
-      -fa 1
-      --parallel 1
-      --spec-type draft-mtp
-      --spec-draft-n-max 2
-      --cache-type-k q8_0
-      --cache-type-v q8_0
+# Consumer services — OpenClaw gateway and future consumers
+# These services connect to the inference server running in
+# docker-compose.llama.yaml. Restarting this stack does not
+# affect the inference layer.
 
-  # Service 2: OpenClaw Gateway (AI Assistant Front-End)
-  # Routes conversations to local llama.cpp instance (Qwen3.6-35B-A3B on port 8081)
+services:
   openclaw:
     image: ghcr.io/openclaw/openclaw@sha256:8ecbd44d788db7048108a712802a98fad3f1f9a8a87f78fb111dc3fd0f8a9ed7
     container_name: openclaw
+    restart: unless-stopped
     ports:
       - "18789:18789"
     command: node dist/index.js gateway --allow-unconfigured --port 18789
@@ -49,8 +15,12 @@ services:
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
     volumes:
       - openclaw-data:/home/node/.openclaw
-    depends_on:
-      - llama-backend
+    networks:
+      - command-center-net
 
 volumes:
   openclaw-data:
+
+networks:
+  command-center-net:
+    external: true

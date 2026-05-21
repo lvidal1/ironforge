@@ -1,24 +1,38 @@
 # Command Center
 
-Local AI assistant infrastructure: llama.cpp inference server with MTP speculative decoding + OpenClaw gateway UI.
+Local AI assistant infrastructure: llama.cpp inference server + OpenClaw gateway UI.
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌──────────────────────┐     ┌──────────────┐
-│   Browser        │     │  OpenClaw Gateway    │     │ llama.cpp    │
-│  localhost:18789 │────▶│  openclaw:18789      │────▶│ llama_backend│
-│  (Control UI)    │     │  (WebSocket/REST)    │     │ :8081        │
-└─────────────────┘     └──────────────────────┘     └──────────────┘
-                                                          │
-                                                    ┌───────────┐
-                                                    │ CUDA GPU  │
-                                                    └───────────┘
+┌─────────────┐     ┌──────────────────────┐     ┌──────────────────┐
+│   OpenClaw   │     │  Inference Server     │     │ CUDA GPU         │
+│  :18789      │────▶│  :8081 (llama.cpp)    │────▶│ RTX 4090         │
+│  (UI/Agent)  │     │  (MTP + spec decode)  │     │                  │
+└─────────────┘     └──────────────────────┘     └──────────────────┘
+         ▲
+         │
+    ┌─────────┐
+    │   Pi    │
+    │  (API)  │
+    └─────────┘
 ```
 
 ### Services
-- **llama-backend** — Inference server using llama.cpp with MTP (Multi-Token Prediction) speculative decoding. Exposes OpenAI-compatible API at `/v1`.
+- **llama-backend** — Inference server using llama.cpp with MTP (Multi-Token Prediction). Exposes OpenAI-compatible API at `/v1`.
 - **openclaw** — Gateway providing a web UI and agent framework. Routes to llama-backend via Docker network.
+- **Pi** — Consumes the inference API on port 8081 (not managed by this repo).
+
+### Stack Separation
+
+The stack is split into two independent Docker Compose projects:
+
+| File | Services | Lifecycle |
+|------|----------|-----------|
+| `docker-compose.llama.yaml` | llama-backend | Stable, runs independently |
+| `docker-compose.yaml` | openclaw (and future consumers) | Frequent upgrades, no inference impact |
+
+This ensures that OpenClaw upgrades or restarts never interrupt the inference layer.
 
 ## Prerequisites
 
@@ -39,15 +53,31 @@ cp .env.example .env
 echo "OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)" > .env
 # Or set manually: OPENCLAW_GATEWAY_TOKEN=<your-secret>
 
-# 3. Pull images and start
-docker compose up -d
+# 3. Create the shared Docker network (one-time)
+docker network create command-center-net
 
-# 4. Deploy OpenClaw gateway config (one-time, see below)
+# 4. Start the inference server
+docker compose -f docker-compose.llama.yaml up -d
+
+# 5. Deploy OpenClaw gateway config (one-time, see below)
 bash scripts/deploy-config.sh
 
-# 5. Verify
+# 6. Start OpenClaw
+docker compose up -d
+
+# 7. Verify
 curl http://localhost:8081/v1/models        # Should return model info
 curl http://localhost:18789/                  # Should return gateway UI
+```
+
+### Convenience Scripts
+
+```bash
+# Start everything
+./start.sh
+
+# Stop everything
+./stop.sh
 ```
 
 ## Configuration
@@ -56,11 +86,19 @@ curl http://localhost:18789/                  # Should return gateway UI
 
 See `.env.example`. The only required variable is `OPENCLAW_GATEWAY_TOKEN`.
 
-### Docker Compose
+### Docker Compose — Inference Server
 
-`docker-compose.yaml` defines two services:
-- `llama-backend`: GPU inference with MTP enabled (`--spec-type draft-mtp`, `--spec-draft-n-max 2`)
-- `openclaw`: Gateway UI with token auth
+`docker-compose.llama.yaml` defines:
+- **llama-backend**: GPU inference with MTP enabled (`--spec-type draft-mtp`, `--spec-draft-n-max 2`)
+- `restart: unless-stopped` — automatic recovery from crashes
+- External network: `command-center-net`
+
+### Docker Compose — Consumers
+
+`docker-compose.yaml` defines:
+- **openclaw**: Gateway UI with token auth
+- No `depends_on` — starts immediately, handles connection retry
+- External network: `command-center-net`
 
 ### OpenClaw Gateway Config ⚠️
 
@@ -105,7 +143,7 @@ huggingface-cli download unsloth/Qwen3.6-35B-A3B-MTP-GGUF \
   --local-dir models/
 ```
 
-Any GGUF model works — just update the `-m` flag in `docker-compose.yaml` to match your file.
+Any GGUF model works — just update the `-m` flag in `docker-compose.llama.yaml` to match your file.
 
 ## Frontend Patching
 
@@ -131,10 +169,22 @@ Apply the frontend patch: `bash openclaw-patches/fix-duplicates.sh && docker com
 Check that `gateway.auth.token` in `openclaw.json` matches `OPENCLAW_GATEWAY_TOKEN` in `.env`. The token must also be set via environment variable for the container to read it at startup.
 
 ### Connection refused on port 8081
-Ensure the model file path in `docker-compose.yaml` matches the actual file in `models/`. Check `docker logs llama-backend` for model loading errors.
+Ensure the model file path in `docker-compose.llama.yaml` matches the actual file in `models/`. Check `docker logs llama_backend` for model loading errors.
 
 ### MTP not active
 Verify `--spec-type draft-mtp` is present in the llama-backend command. Check logs for `draft acceptance rate` — if missing, MTP is not enabled.
+
+### Inference server down when restarting OpenClaw
+This should not happen with the split architecture. If you see this, verify both containers are on the `command-center-net` network:
+
+```bash
+docker network inspect command-center-net
+```
+
+If a container is missing, reconnect it:
+```bash
+docker network connect command-center-net <container_name>
+```
 
 ## License
 
