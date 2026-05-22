@@ -2,8 +2,6 @@
   "bindings": [
     { "agentId": "sam", "match": { "channel": "slack", "peer": { "kind": "direct" } } },
     { "agentId": "sam", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "REPLACE_WITH_GENERAL_CHANNEL_ID" } } },
-    { "agentId": "sam", "match": { "channel": "discord", "peer": { "kind": "direct" } } },
-    { "agentId": "sam", "match": { "channel": "discord", "peer": { "kind": "channel", "id": "REPLACE_WITH_GENERAL_CHANNEL_ID" } } },
     { "agentId": "pixel", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "REPLACE_WITH_FRONTEND_CHANNEL_ID" } } },
     { "agentId": "circuit", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "REPLACE_WITH_BACKEND_CHANNEL_ID" } } },
     { "agentId": "lens", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "REPLACE_WITH_QA_CHANNEL_ID" } } }
