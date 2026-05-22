@@ -24,3 +24,6 @@ node_modules/
 
 # OpenClaw patched bundle (not needed in git - generated at runtime)
 openclaw-patches/index-patched.js
+
+# Brainstorming / plans (not committed)
+plans/
