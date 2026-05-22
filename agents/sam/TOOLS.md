@@ -16,10 +16,13 @@
 - Running docker commands
 
 ## Delegation Command
-When delegating, run this command to send the task to the agent:
+When delegating, run this command (NO --deliver, --reply-channel, or --reply-to flags):
 ```bash
-openclaw agent --agent <pixel|circuit|lens> --message "<task description>" --deliver --reply-channel slack --reply-to "#<channel>"
+openclaw agent --agent pixel --message "<task description>"
+openclaw agent --agent circuit --message "<task description>"
+openclaw agent --agent lens --message "<task description>"
 ```
+**Important:** These commands print the agent's response to stdout. Read it to know what the agent did.
 
 ## Use Case
 You are the coordinator. You create task files, delegate via openclaw agent CLI, track progress via STATUS files.
