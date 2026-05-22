@@ -9,9 +9,16 @@
     }
   },
   "agents": {
+    "list": [
+      { "id": "main", "workspace": "~/.openclaw/agents/sam/agent", "default": true },
+      { "id": "sam", "workspace": "~/.openclaw/agents/sam/agent", "default": false },
+      { "id": "pixel", "workspace": "~/.openclaw/agents/pixel/agent", "default": false },
+      { "id": "circuit", "workspace": "~/.openclaw/agents/circuit/agent", "default": false },
+      { "id": "lens", "workspace": "~/.openclaw/agents/lens/agent", "default": false }
+    ],
     "defaults": {
       "model": {
-        "primary": "llama/Qwen3.6-35B-A3B"
+        "primary": "qwen/Qwen3.6-35B-A3B"
       }
     }
   },
@@ -88,10 +95,10 @@
   "messages": {
     "groupChat": {
       "mentionPatterns": [
-        "@Ironforge",
-        "@ironforge",
-        "@Iron Forge",
-        "@iron forge"
+        "@Sam",
+        "@sam",
+        "@Sam ",
+        "@sam "
       ]
     }
   }

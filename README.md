@@ -10,10 +10,13 @@ Local AI assistant infrastructure: llama.cpp inference server + OpenClaw gateway
 │  :18789      │────▶│  :8081 (llama.cpp)    │────▶│ RTX 4090         │
 │  (UI/Agent)  │     │  (MTP + spec decode)  │     │                  │
 │              │     │                      │     │                  │
-│  ┌────────┐  │     │                      │     │                  │
-│  │ Discord│──┘     │                      │     │                  │
-│  │  Slack │        │                      │     │                  │
-│  └────────┘        │                      │     │                  │
+│  ┌──────────┐ │     │                      │     │                  │
+│  │ Sam 🦅   │─┘     │                      │     │                  │
+│  │ Coordinator│     │                      │     │                  │
+│  │ Pixel 🎨 │──────▶│                      │     │                  │
+│  │ Circuit ⚡│      │                      │     │                  │
+│  │ Lens 🔍  │──────▶│                      │     │                  │
+│  └──────────┘        │                      │     │                  │
 └─────────────────────┘                      │     │                  │
                                              │     │                  │
                                      ┌──────────────────┐            │
@@ -34,6 +37,21 @@ Local AI assistant infrastructure: llama.cpp inference server + OpenClaw gateway
 - **Discord** — Bot integration via `DISCORD_BOT_TOKEN` env var (Socket Mode equivalent).
 - **Slack** — Bot integration via `SLACK_APP_TOKEN` + `SLACK_BOT_TOKEN` env vars (Socket Mode).
 - **Pi** — Consumes the inference API on port 8081 (not managed by this repo).
+
+### Agent Team
+
+OpenClaw runs a multi-agent team with specialized roles:
+
+| Agent | Role | Emoji | Slack Channel |
+|-------|------|-------|---------------|
+| **Sam** | Team Lead / Coordinator | 🦅 | `#general` (default) |
+| **Pixel** | Frontend Engineer | 🎨 | `#ironforge-frontend` |
+| **Circuit** | Backend Engineer | ⚡ | `#ironforge-backend` |
+| **Lens** | QA/Research | 🔍 | `#ironforge-qa` |
+
+Each agent has its own workspace with persona files (`AGENTS.md`, `SOUL.md`, `IDENTITY.md`, etc.) and specific file access boundaries.
+
+**Routing**: Messages are routed to agents based on Slack/Discord channels. DMs and `#general` go to Sam (coordinator). Specialist channels go to the corresponding agent.
 
 ### Stack Separation
 
@@ -212,6 +230,53 @@ If a container is missing, reconnect it:
 ```bash
 docker network connect command-center-net <container_name>
 ```
+
+## Agent Team Setup
+
+### Creating Slack Channels
+
+For the agent team to work, you need to create Slack channels and route them to the right agents:
+
+1. **Create channels in Slack:**
+   - `#ironforge-frontend` — for Pixel (frontend tasks)
+   - `#ironforge-backend` — for Circuit (backend tasks)
+   - `#ironforge-qa` — for Lens (testing, code review)
+   - `#general` — for Sam (coordinator)
+
+2. **Get channel IDs:**
+   ```bash
+   # In Slack, click the channel name → copy link
+   # Channel ID is the number in the URL: https://app.slack.com/client/T00000000/C00000000
+   # C00000000 is the channel ID
+   ```
+
+3. **Update OpenClaw bindings:**
+   ```bash
+   cat > /tmp/bindings.json << 'EOF'
+   {
+     "bindings": [
+       { "agentId": "sam", "match": { "channel": "slack", "peer": { "kind": "direct" } } },
+       { "agentId": "sam", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "GENERAL_CHANNEL_ID" } } },
+       { "agentId": "pixel", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "FRONTEND_CHANNEL_ID" } } },
+       { "agentId": "circuit", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "BACKEND_CHANNEL_ID" } } },
+       { "agentId": "lens", "match": { "channel": "slack", "peer": { "kind": "channel", "id": "QA_CHANNEL_ID" } } }
+     ]
+   }
+   EOF
+   docker cp /tmp/bindings.json openclaw:/tmp/bindings.json
+   docker exec openclaw openclaw config patch --file /tmp/bindings.json
+   docker compose restart openclaw
+   ```
+
+### Agent Workspaces
+
+Each agent's workspace is in the Docker volume:
+- `/home/node/.openclaw/agents/sam/agent/` — Sam (coordinator)
+- `/home/node/.openclaw/agents/pixel/agent/` — Pixel (frontend)
+- `/home/node/.openclaw/agents/circuit/agent/` — Circuit (backend)
+- `/home/node/.openclaw/agents/lens/agent/` — Lens (QA/research)
+
+Agent persona files are stored in the repo under `agents/<agent>/` and can be copied to the volume.
 
 ## Plugin Installation
 
