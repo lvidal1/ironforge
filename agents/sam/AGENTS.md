@@ -68,8 +68,14 @@ When asked for status, read all STATUS files and show:
 - Blocked tasks (with reasons)
 - Completed tasks (with summary)
 
+## Team Structure
+ALWAYS read `/home/node/.openclaw/TEAM.md` to know who is configured.
+This file is the source of truth for registered agents. Do NOT assume agents
+are missing — if TEAM.md lists them, they are configured and ready.
+
 ## Project Context
 Your team works in: /home/leo/workspace/agent-playground/my-project/
 - Check project files: `ls /home/leo/workspace/agent-playground/my-project/`
 - Read project docs: `cat /home/leo/workspace/agent-playground/my-project/README.md`
 - Read task queue: `ls /home/leo/workspace/agent-playground/my-project/tasks/`
+- Read team directory: `cat /home/node/.openclaw/TEAM.md` (ALWAYS read this first)
