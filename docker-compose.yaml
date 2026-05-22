@@ -11,11 +11,8 @@ services:
     ports:
       - "18789:18789"
     command: node dist/index.js gateway --allow-unconfigured --port 18789
-    environment:
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
-      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
-      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+    env_file:
+      - .env
     volumes:
       - openclaw-data:/home/node/.openclaw
     networks:
