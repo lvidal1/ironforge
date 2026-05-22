@@ -45,6 +45,9 @@
       },
       "discord": {
         "enabled": true
+      },
+      "slack": {
+        "enabled": true
       }
     }
   },
@@ -58,6 +61,20 @@
             "id": "DISCORD_BOT_TOKEN"
           }
         }
+      }
+    },
+    "slack": {
+      "enabled": true,
+      "mode": "socket",
+      "appToken": {
+        "source": "env",
+        "provider": "default",
+        "id": "SLACK_APP_TOKEN"
+      },
+      "botToken": {
+        "source": "env",
+        "provider": "default",
+        "id": "SLACK_BOT_TOKEN"
       }
     }
   },

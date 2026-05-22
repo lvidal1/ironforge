@@ -9,7 +9,17 @@ Local AI assistant infrastructure: llama.cpp inference server + OpenClaw gateway
 │   OpenClaw   │     │  Inference Server     │     │ CUDA GPU         │
 │  :18789      │────▶│  :8081 (llama.cpp)    │────▶│ RTX 4090         │
 │  (UI/Agent)  │     │  (MTP + spec decode)  │     │                  │
-└─────────────┘     └──────────────────────┘     └──────────────────┘
+│              │     │                      │     │                  │
+│  ┌────────┐  │     │                      │     │                  │
+│  │ Discord│──┘     │                      │     │                  │
+│  │  Slack │        │                      │     │                  │
+│  └────────┘        │                      │     │                  │
+└─────────────────────┘                      │     │                  │
+                                             │     │                  │
+                                     ┌──────────────────┐            │
+                                     │  Discord + Slack  │◀───────────┘
+                                     │  (APIs)           │
+                                     └──────────────────┘
          ▲
          │
     ┌─────────┐
@@ -21,6 +31,8 @@ Local AI assistant infrastructure: llama.cpp inference server + OpenClaw gateway
 ### Services
 - **llama-backend** — Inference server using llama.cpp with MTP (Multi-Token Prediction). Exposes OpenAI-compatible API at `/v1`.
 - **openclaw** — Gateway providing a web UI and agent framework. Routes to llama-backend via Docker network.
+- **Discord** — Bot integration via `DISCORD_BOT_TOKEN` env var (Socket Mode equivalent).
+- **Slack** — Bot integration via `SLACK_APP_TOKEN` + `SLACK_BOT_TOKEN` env vars (Socket Mode).
 - **Pi** — Consumes the inference API on port 8081 (not managed by this repo).
 
 ### Stack Separation
@@ -86,7 +98,11 @@ curl http://localhost:18789/                  # Should return gateway UI
 
 See `.env.example`. Required variables:
 - `OPENCLAW_GATEWAY_TOKEN` — Gateway authentication token
+
+Optional variables (set to connect messaging channels):
 - `DISCORD_BOT_TOKEN` — Discord bot token (optional, for Discord integration)
+- `SLACK_APP_TOKEN` — Slack App-Level Token with `connections:write` scope (optional, Socket Mode)
+- `SLACK_BOT_TOKEN` — Slack Bot Token (optional, Socket Mode)
 
 ### Docker Compose — Inference Server
 
@@ -117,6 +133,9 @@ bash scripts/deploy-config.sh
 - `gateway.auth.token` — must match `OPENCLAW_GATEWAY_TOKEN` in `.env`
 - `gateway.bind` — set to `lan` for LAN access
 - `channels.discord.accounts.default.token` — uses env var reference `{source: "env", id: "DISCORD_BOT_TOKEN"}`
+- `channels.slack.appToken` — uses env var reference `{source: "env", id: "SLACK_APP_TOKEN"}`
+- `channels.slack.botToken` — uses env var reference `{source: "env", id: "SLACK_BOT_TOKEN"}`
+- `plugins.entries.discord.enabled` / `plugins.entries.slack.enabled` — toggle channel plugins
 
 **Security model**: Tokens are injected at runtime via Docker environment variables and read by OpenClaw's env var resolver. No secrets are persisted in config files or volumes.
 
@@ -168,6 +187,14 @@ Check that `gateway.auth.token` in `openclaw.json` matches `OPENCLAW_GATEWAY_TOK
 3. Check logs: `docker logs openclaw | grep discord`
 4. Verify the bot uses Discord's `@` mention dropdown (plain `@Name` text is not recognized)
 
+### Slack bot not responding
+1. Ensure `SLACK_APP_TOKEN` and `SLACK_BOT_TOKEN` are set in `.env` (not empty)
+2. Install plugin: `docker exec openclaw openclaw plugins install @openclaw/slack`
+3. Restart: `docker compose restart openclaw`
+4. Check logs: `docker logs openclaw | grep -i slack`
+5. Verify Socket Mode is enabled in your Slack App dashboard
+6. Confirm the app-level token has the `connections:write` scope
+
 ### Connection refused on port 8081
 Ensure the model file path in `docker-compose.llama.yaml` matches the actual file in `models/`. Check `docker logs llama_backend` for model loading errors.
 
@@ -184,6 +211,18 @@ docker network inspect command-center-net
 If a container is missing, reconnect it:
 ```bash
 docker network connect command-center-net <container_name>
+```
+
+## Plugin Installation
+
+After deploying config, install channel plugins via CLI:
+
+```bash
+# Discord plugin (pre-installed with OpenClaw)
+# No additional install needed
+
+# Slack plugin
+openclaw plugins install @openclaw/slack
 ```
 
 ## License
